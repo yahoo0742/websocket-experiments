@@ -30,8 +30,10 @@ io.on('disconnect', (socket)=>{
 });
 
 io.on('connection', (socket) => {
-    if (!sockets)
+    if (!sockets) {
         sockets = [];
+        io.emit('message', "Wenbo says 'Hi' to you!");
+    }
     sockets.push(socket);
 
 
