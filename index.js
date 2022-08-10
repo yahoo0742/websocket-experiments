@@ -32,10 +32,10 @@ io.on('disconnect', (socket)=>{
 io.on('connection', (socket) => {
     if (!sockets) {
         sockets = [];
-        io.emit('message', "Wenbo says 'Hi' to you! Send --help to explore options.");
     }
     sockets.push(socket);
 
+    socket.emit('message', "Wenbo says 'Hi' to you! Send --help to explore options.");
 
     console.log(" Connected. Socket id ", socket.id, sockets.length);
     socket.on('heartbeat', ()=>{
