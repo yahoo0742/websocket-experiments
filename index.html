@@ -44,68 +44,253 @@
             color: #fff;
         }
 
-        #messages {
-            list-style-type: none;
-            margin: 0;
-            padding: 0;
+        .message-container {
+            width: 100%;
+
         }
 
-        #messages>li {
-            padding: 0.5rem 1rem;
-        }
-
-        #messages>li:nth-child(odd) {
+        .msg-record:nth-child(odd) {
             background: #efefef;
+        }
+
+        thead {
+            background-color: rgb(28, 90, 170);
+            color: white;
         }
     </style>
 </head>
 
 <body>
-    <ul id="messages"></ul>
+    <table class="message-container">
+        <thead>
+            <tr>
+                <td colspan="7">
+                    Socket 1
+                </td>
+                <td colspan="4">
+                    Socket 2
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    ID
+                </td>
+                <td>
+                    Content
+                </td>
+                <td>ClientSent</td>
+                <td>ServrRec</td>
+                <td>ServrSent</td>
+                <td>ClientRec</td>
+                <td>Sent2Rec</td>
+                <td>
+                    ID
+                </td>
+                <td>
+                    Content
+                </td>
+                <td>ServrSent</td>
+                <td>ClientRec</td>
+            </tr>
+        </thead>
+        <tbody class="message-body" id="messages">
+
+        </tbody>
+    </table>
+
     <form id="form" action="">
         <input id="input" autocomplete="off" /><button>Send</button>
     </form>
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        var socket1 = io();
-        var socket2 = io(undefined, {forceNew: true});
+        const appStartTime = Date.now();
+        const socket1MsgsDOM = document.getElementById('socket1');
+        const socket2MsgsDOM = document.getElementById('socket2');
+        const msgRoot = document.getElementById("messages");
+        let messageIndex = 0;
 
-        setInterval(()=>{
+        var socket1 = io();
+        var socket2 = io(undefined, {
+            forceNew: true
+        });
+
+        function getTimeFromAppStart(time) {
+            if (time > 100000000)
+                return time - appStartTime;
+            return time;
+        }
+
+        function updateUIForNewData(whichSocket, root, data, idx = undefined, clientSentTime = undefined,
+            serverReceivedTime =
+            undefined, serverSentTime = undefined, clientReceivedTime = undefined) {
+            let rowDOM = null;
+            let socket1IdxDOM, socket1ContentDOM, socket1TimeClientSentDOM, socket1TimeServerReceivedDOM,
+                socket1TimeServerSentDOM, socket1TimeClientReceivedDOM, socket1ElapsedSent2ReceivedDOM;
+            let socket2IdxDOM, socket2ContentDOM, socket2TimeServerSentDOM, socket2TimeClientReceivedDOM;
+            if (typeof idx != 'undefined' && typeof data == 'string') {
+                rowDOM = root.querySelector("#msg-idx-" + idx);
+            }
+            if (!rowDOM) {
+                rowDOM = document.createElement("tr");
+                rowDOM.classList.add("msg-record");
+                rowDOM.id = typeof data == 'string' ? "msg-idx-" + idx : "resp-data-idx-" + idx;
+                root.appendChild(rowDOM);
+
+                // socket1 index
+                socket1IdxDOM = document.createElement("td");
+                socket1IdxDOM.classList.add("msg-idx");
+                rowDOM.appendChild(socket1IdxDOM);
+
+                // socket 1 content
+                socket1ContentDOM = document.createElement("td");
+                socket1ContentDOM.classList.add("msg-content");
+                rowDOM.appendChild(socket1ContentDOM);
+
+                // socket 1 client sent time
+                socket1TimeClientSentDOM = document.createElement("td");
+                socket1TimeClientSentDOM.classList.add("msg-time");
+                rowDOM.appendChild(socket1TimeClientSentDOM);
+
+                // socket 1 server received time
+                socket1TimeServerReceivedDOM = document.createElement("td");
+                socket1TimeServerReceivedDOM.classList.add("msg-time");
+                rowDOM.appendChild(socket1TimeServerReceivedDOM);
+
+                // socket 1 server sent time
+                socket1TimeServerSentDOM = document.createElement("td");
+                socket1TimeServerSentDOM.classList.add("msg-time");
+                rowDOM.appendChild(socket1TimeServerSentDOM);
+
+                // socket 1 client received time
+                socket1TimeClientReceivedDOM = document.createElement("td");
+                socket1TimeClientReceivedDOM.classList.add("msg-time");
+                rowDOM.appendChild(socket1TimeClientReceivedDOM);
+
+                // socket 1 client time elapsed since sent
+                socket1ElapsedSent2ReceivedDOM = document.createElement("td");
+                socket1ElapsedSent2ReceivedDOM.classList.add("msg-time");
+                rowDOM.appendChild(socket1ElapsedSent2ReceivedDOM);
+
+                // socket 2 index
+                socket2IdxDOM = document.createElement("td");
+                socket2IdxDOM.classList.add("socket2", "msg-idx");
+                rowDOM.appendChild(socket2IdxDOM);
+
+                // socket 2 content
+                socket2ContentDOM = document.createElement("td");
+                socket2ContentDOM.classList.add("socket2", "msg-content");
+                rowDOM.appendChild(socket2ContentDOM);
+
+                // socket 2 server sent time
+                socket2TimeServerSentDOM = document.createElement("td");
+                socket2TimeServerSentDOM.classList.add("socket2", "msg-time");
+                rowDOM.appendChild(socket2TimeServerSentDOM);
+
+                // socket 2 client received time
+                socket2TimeClientReceivedDOM = document.createElement("td");
+                socket2TimeClientReceivedDOM.classList.add("socket2", "msg-time");
+                rowDOM.appendChild(socket2TimeClientReceivedDOM);
+            } else {
+                const doms = rowDOM.querySelectorAll("td");
+                socket1IdxDOM = doms[0], socket1ContentDOM = doms[1], socket1TimeClientSentDOM = doms[2],
+                    socket1TimeServerReceivedDOM = doms[3], socket1TimeServerSentDOM = doms[4],
+                    socket1TimeClientReceivedDOM = doms[5], socket1ElapsedSent2ReceivedDOM = doms[6];
+                socket2IdxDOM = doms[7], socket2ContentDOM = doms[8], socket2TimeServerSentDOM = doms[9],
+                    socket2TimeClientReceivedDOM = doms[10];
+            }
+
+            if (whichSocket == "socket1") {
+
+                if (typeof idx != 'undefined') {
+                    socket1IdxDOM.textContent = idx;
+                }
+                if (typeof data === 'string') {
+                    socket1ContentDOM.textContent = data;
+                } else if (Array.isArray(data)) {
+                    socket1ContentDOM.textContent = Math.floor(data.length / 1024) + "KBs";
+                }
+
+                if (typeof clientSentTime != 'undefined') {
+                    socket1TimeClientSentDOM.textContent = getTimeFromAppStart(clientSentTime);
+                }
+                if (typeof serverReceivedTime != 'undefined') {
+                    socket1TimeServerReceivedDOM.textContent = getTimeFromAppStart(serverReceivedTime);
+                }
+                if (typeof serverSentTime != 'undefined') {
+                    socket1TimeServerSentDOM.textContent = getTimeFromAppStart(serverSentTime);
+                }
+
+                if (typeof clientReceivedTime != 'undefined') {
+                    const receivedTime = getTimeFromAppStart(clientReceivedTime);;
+                    socket1TimeClientReceivedDOM.textContent = receivedTime;
+                    const clientSentTime = socket1TimeClientSentDOM.textContent.trim();
+                    if (clientSentTime) {
+                        const elapsed = receivedTime - Number.parseInt(clientSentTime);
+                        socket1ElapsedSent2ReceivedDOM.textContent = elapsed;
+                    }
+                }
+
+            } else {
+                // socket 2
+                if (typeof idx != 'undefined') {
+                    socket2IdxDOM.textContent = idx;
+                }
+                if (typeof data === 'string') {
+                    socket2ContentDOM.textContent = data;
+                } else if (Array.isArray(data)) {
+                    socket2ContentDOM.textContent = Math.floor(data.length / 1024) + "KBs";
+                }
+
+                if (typeof serverSentTime != 'undefined') {
+                    socket2TimeServerSentDOM.textContent = getTimeFromAppStart(serverSentTime);
+                }
+                if (typeof clientReceivedTime != 'undefined') {
+                    const receivedTime = getTimeFromAppStart(clientReceivedTime);;
+                    socket2TimeClientReceivedDOM.textContent = receivedTime;
+                }
+            }
+        }
+
+        setInterval(() => {
             socket1.emit('heartbeat');
             socket2.emit('heartbeat');
         }, 1000);
 
-        var messages = document.getElementById('messages');
         var form = document.getElementById('form');
         var input = document.getElementById('input');
 
-        let time1 = 0;
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (input.value) {
-                time1 = Date.now();
-                console.log(time1, `Socket 1 sends: '${input.value}'`);
-                socket1.emit('message', input.value);
+                const clientSentTime = Date.now();
+                const payload = {
+                    index: messageIndex,
+                    content: input.value,
+                    clientSentTime,
+                };
+                socket1.emit('message', JSON.stringify(payload));
                 input.value = '';
+
+                updateUIForNewData("socket1", msgRoot, payload.content, messageIndex, payload.clientSentTime);
+                messageIndex += 1;
             }
         });
 
-        socket1.on('message', function (msg) {
-            if (typeof msg == 'string') {
-                console.log(Date.now(), ` Socket 1 ${socket1.id} received: '${msg}' after ${Date.now()-time1} ms`);
-                var item = document.createElement('li');
-                item.textContent = "Received: " + msg;
-                messages.appendChild(item);
-                window.scrollTo(0, document.body.scrollHeight);
-            } else
-                console.log(Date.now(),` Socket 1 received chunk ${msg.length} bytes`);
+        socket1.on('message', function (payload) {
+
+            const clientReceivedTime = Date.now();
+            updateUIForNewData("socket1", msgRoot, payload.content, payload.index, payload.clientSentTime,
+                payload
+                .serverReceivedTime, payload.serverSentTime, clientReceivedTime);
+            window.scrollTo(0, document.body.scrollHeight);
         });
 
-        socket2.on('live', function(data) {
-            console.log(Date.now(), ` Socket 2 received chunk ${data.length} bytes`);
+        socket2.on('live', function (data) {
+            updateUIForNewData("socket2", msgRoot, data.content, data.index, data.clientSentTime, data
+                .serverReceivedTime, data.serverSentTime, Date.now());
+            window.scrollTo(0, document.body.scrollHeight);
         });
-
     </script>
 </body>
 

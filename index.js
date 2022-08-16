@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
     }
     sockets.push(socket);
 
-    socket.emit('message', "Wenbo says 'Hi' to you! Send --help to explore options.");
+    socket.emit('message', {serverSentTime: Date.now(), content:"Wenbo says 'Hi' to you! Send --help to explore options."});
 
     console.log(" Connected. Socket id ", socket.id, sockets.length);
     socket.on('heartbeat', ()=>{
@@ -50,9 +50,12 @@ io.on('connection', (socket) => {
         }
     }, 1000);
 
-    socket.on('message', msg => {
-        console.log( Date.now(), ` Socket ${socket.id} received msg:`, msg);
-
+    socket.on('message', (payload) => {
+        const serverReceivedTime = Date.now();
+        payload = JSON.parse(payload);
+        console.log( serverReceivedTime, ` Socket ${socket.id} received msg:`, payload);
+        let msg = payload["content"];
+        console.log(" msg ",msg);
         if (msg.startsWith('--')) {
             if (msg == '--help') {
                 msg += " --live: switch on/off live socket; --1socket4all: switch on/off message and live in 1 socket; --chunksize=NUM: chunk size;  --#chunks=NUM: number of chunks."
@@ -87,18 +90,18 @@ io.on('connection', (socket) => {
                 if (anotherSocket) {
                     for (let i = 0; i < numOfLiveChunks; ++i) {
                         console.log(Date.now(), ` Another socket ${anotherSocket.id} responds chunk ${i}`);
-                        anotherSocket.emit('live', bigChunk);
+                        anotherSocket.emit('live', {index: payload.index, serverSentTime: Date.now(), content:bigChunk});
                     }
                 }
             } else {
                 for (let i = 0; i < numOfLiveChunks; ++i) {
                     console.log(Date.now(), ` Socket ${socket.id} responds chunk ${i}`);
-                    socket.emit('message', bigChunk);
+                    socket.emit('message', {index: payload.index, serverSentTime: Date.now(), content: bigChunk});
                 }
             }
         }
         console.log(Date.now(),` Socket ${socket.id} responds ${msg}`);
-        socket.emit('message', msg);
+        socket.emit('message', {...payload, serverReceivedTime, serverSentTime: Date.now(), content: msg});
     });
 });
 
