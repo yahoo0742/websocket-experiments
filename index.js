@@ -98,7 +98,7 @@ io.on('connection', (socket) => {
             }
         }
         console.log(Date.now(),` Socket ${socket.id} responds ${msg}`);
-        socket.emit('message', msg);
+        socket.emit('message', Date.now() + ": "+ msg);
     });
 });
 
